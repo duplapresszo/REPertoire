@@ -1,0 +1,7 @@
+# .NET Core / Visual Studio build cache
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.cache

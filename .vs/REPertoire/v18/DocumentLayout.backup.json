@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Almasi\\Desktop\\UNI\\passion\\REPertoire\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{2CE33DB6-B06C-46C3-9E38-C448BAF6011A}|REPertoire.csproj|d:\\almasi\\desktop\\uni\\passion\\repertoire\\workoutwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2CE33DB6-B06C-46C3-9E38-C448BAF6011A}|REPertoire.csproj|solutionrelative:workoutwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "WorkoutWindow.xaml.cs",
+              "DocumentMoniker": "D:\\Almasi\\Desktop\\UNI\\passion\\REPertoire\\WorkoutWindow.xaml.cs",
+              "RelativeDocumentMoniker": "WorkoutWindow.xaml.cs",
+              "ToolTip": "D:\\Almasi\\Desktop\\UNI\\passion\\REPertoire\\WorkoutWindow.xaml.cs",
+              "RelativeToolTip": "WorkoutWindow.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-21T19:46:47.704Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
