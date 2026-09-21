@@ -1,4 +1,5 @@
 # REPertoire 🏋️‍♂️
+![REPertoire Dashboard](images/dashboard.png)
 
 A desktop workout tracker built to make logging gym sessions easy. It lets you create workouts, add exercises on the fly, and track your weights and reps in real-time.
 
