@@ -17,11 +17,12 @@ namespace REPertoire
         private Dictionary<int, string> sessionExercises = new Dictionary<int, string>();
 
         private DispatcherTimer restTimer;
-        private int defaultRestSeconds = 90;
+        private int defaultRestSeconds = 180;
         private int currentRemainingSeconds = 90;
         private bool isTimerRunning = false;
 
-        // Upgraded constructor accepts an optional SessionID
+        private int? currentlyEditingSetId = null;
+
         public WorkoutWindow(int? existingSessionId = null)
         {
             InitializeComponent();
@@ -33,13 +34,11 @@ namespace REPertoire
 
             LoadMasterExerciseList();
 
-            // EDIT MODE: Load existing data instead of creating a new session
             if (existingSessionId.HasValue)
             {
                 currentSessionId = existingSessionId.Value;
                 LoadExistingSessionData();
             }
-            // NEW WORKOUT MODE: Create a brand new session
             else
             {
                 StartTimeTextBox.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
@@ -210,6 +209,44 @@ namespace REPertoire
                 SetLoggingPanel.IsEnabled = false;
                 SelectedExerciseHeader.Text = "Select an exercise to log sets";
             }
+
+            ResetSetEditorUI();
+        }
+
+        // --- NEW: Remove Exercise from Session ---
+        private void RemoveSessionExercise_Click(object sender, RoutedEventArgs e)
+        {
+            if (ActiveExercisesList.SelectedItem != null)
+            {
+                var selectedKvp = (KeyValuePair<int, string>)ActiveExercisesList.SelectedItem;
+                int exerciseId = selectedKvp.Key;
+
+                var result = MessageBox.Show($"Are you sure you want to remove '{selectedKvp.Value}' and delete all sets logged for it in this session?", "Remove Exercise", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+                        string query = "DELETE FROM Sets WHERE SessionID = @SessionID AND ExerciseID = @ExerciseID";
+                        using (SqlCommand cmd = new SqlCommand(query, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@SessionID", currentSessionId);
+                            cmd.Parameters.AddWithValue("@ExerciseID", exerciseId);
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    sessionExercises.Remove(exerciseId);
+                    ActiveExercisesList.ItemsSource = null;
+                    ActiveExercisesList.ItemsSource = sessionExercises;
+
+                    SetsGrid.ItemsSource = null;
+                    SetLoggingPanel.IsEnabled = false;
+                    SelectedExerciseHeader.Text = "Select an exercise to log sets";
+                    ResetSetEditorUI();
+                }
+            }
         }
 
         private void LogSetBtn_Click(object sender, RoutedEventArgs e)
@@ -221,22 +258,40 @@ namespace REPertoire
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = @"INSERT INTO Sets (SessionID, ExerciseID, Weight, Reps, Notes) 
-                                     VALUES (@SessionID, @ExerciseID, @Weight, @Reps, @Notes)";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    if (currentlyEditingSetId.HasValue)
                     {
-                        command.Parameters.AddWithValue("@SessionID", currentSessionId);
-                        command.Parameters.AddWithValue("@ExerciseID", (int)ActiveExercisesList.SelectedValue);
-                        command.Parameters.AddWithValue("@Weight", Convert.ToDecimal(WeightTextBox.Text));
-                        command.Parameters.AddWithValue("@Reps", Convert.ToInt32(RepsTextBox.Text));
-                        command.Parameters.AddWithValue("@Notes", NotesTextBox.Text ?? (object)DBNull.Value);
+                        // UPDATE Existing Set
+                        string updateQuery = @"UPDATE Sets SET Weight = @Weight, Reps = @Reps, Notes = @Notes WHERE SetID = @SetID";
+                        using (SqlCommand command = new SqlCommand(updateQuery, connection))
+                        {
+                            command.Parameters.AddWithValue("@SetID", currentlyEditingSetId.Value);
+                            command.Parameters.AddWithValue("@Weight", Convert.ToDecimal(WeightTextBox.Text));
+                            command.Parameters.AddWithValue("@Reps", Convert.ToInt32(RepsTextBox.Text));
+                            command.Parameters.AddWithValue("@Notes", string.IsNullOrWhiteSpace(NotesTextBox.Text) ? (object)DBNull.Value : NotesTextBox.Text);
+                            command.ExecuteNonQuery();
+                        }
 
-                        command.ExecuteNonQuery();
+                        ResetSetEditorUI();
+                    }
+                    else
+                    {
+                        // INSERT New Set
+                        string insertQuery = @"INSERT INTO Sets (SessionID, ExerciseID, Weight, Reps, Notes) 
+                                               VALUES (@SessionID, @ExerciseID, @Weight, @Reps, @Notes)";
+                        using (SqlCommand command = new SqlCommand(insertQuery, connection))
+                        {
+                            command.Parameters.AddWithValue("@SessionID", currentSessionId);
+                            command.Parameters.AddWithValue("@ExerciseID", (int)ActiveExercisesList.SelectedValue);
+                            command.Parameters.AddWithValue("@Weight", Convert.ToDecimal(WeightTextBox.Text));
+                            command.Parameters.AddWithValue("@Reps", Convert.ToInt32(RepsTextBox.Text));
+                            command.Parameters.AddWithValue("@Notes", string.IsNullOrWhiteSpace(NotesTextBox.Text) ? (object)DBNull.Value : NotesTextBox.Text);
+                            command.ExecuteNonQuery();
+                        }
+                        NotesTextBox.Clear();
                     }
                 }
 
-                NotesTextBox.Clear();
                 RefreshSetsGrid();
             }
             catch (FormatException)
@@ -249,6 +304,55 @@ namespace REPertoire
             }
         }
 
+        // --- NEW: Edit Set Data ---
+        private void EditSet_Click(object sender, RoutedEventArgs e)
+        {
+            if (SetsGrid.SelectedItem is DataRowView row)
+            {
+                currentlyEditingSetId = Convert.ToInt32(row["SetID"]);
+                WeightTextBox.Text = row["Weight"].ToString();
+                RepsTextBox.Text = row["Reps"].ToString();
+                NotesTextBox.Text = row["Notes"].ToString();
+
+                LogSetBtn.Content = "Update Set";
+                LogSetBtn.Background = new SolidColorBrush(Color.FromRgb(245, 158, 11)); 
+            }
+        }
+
+        // --- NEW: Delete Single Set ---
+        private void DeleteSet_Click(object sender, RoutedEventArgs e)
+        {
+            if (SetsGrid.SelectedItem is DataRowView row)
+            {
+                int setId = Convert.ToInt32(row["SetID"]);
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    using (SqlCommand cmd = new SqlCommand("DELETE FROM Sets WHERE SetID = @SetID", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@SetID", setId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                if (currentlyEditingSetId == setId)
+                {
+                    ResetSetEditorUI();
+                }
+
+                RefreshSetsGrid();
+            }
+        }
+
+        private void ResetSetEditorUI()
+        {
+            currentlyEditingSetId = null;
+            LogSetBtn.Content = "Log Set";
+            LogSetBtn.Background = new SolidColorBrush(Color.FromRgb(59, 130, 246));
+            NotesTextBox.Clear();
+        }
+
         private void RefreshSetsGrid()
         {
             if (ActiveExercisesList.SelectedValue == null) return;
@@ -258,7 +362,7 @@ namespace REPertoire
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    string query = @"SELECT ROW_NUMBER() OVER (ORDER BY SetID) as SetNumber, 
+                    string query = @"SELECT SetID, ROW_NUMBER() OVER (ORDER BY SetID) as SetNumber, 
                                             Weight, Reps, Notes 
                                      FROM Sets 
                                      WHERE SessionID = @SessionID AND ExerciseID = @ExerciseID
@@ -306,7 +410,6 @@ namespace REPertoire
                     }
                 }
 
-                MessageBox.Show("Workout saved successfully!");
                 this.Close();
             }
             catch (FormatException)
@@ -319,6 +422,7 @@ namespace REPertoire
             }
         }
 
+        // Timer Logic Below (Unchanged)
         private void ToggleTimerMenu_Click(object sender, RoutedEventArgs e)
         {
             if (TimerMenuPanel.Visibility == Visibility.Visible)

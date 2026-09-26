@@ -100,7 +100,13 @@
                             </Grid>
                         </StackPanel>
 
-                        <ListBox x:Name="ActiveExercisesList" Grid.Row="1" BorderThickness="1" BorderBrush="#E5E7EB" FontSize="16" SelectionChanged="ActiveExercisesList_SelectionChanged"/>
+                        <ListBox x:Name="ActiveExercisesList" Grid.Row="1" BorderThickness="1" BorderBrush="#E5E7EB" FontSize="16" SelectionChanged="ActiveExercisesList_SelectionChanged">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Remove Exercise from Session" Foreground="#EF4444" Click="RemoveSessionExercise_Click"/>
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                        </ListBox>
                     </Grid>
                 </Border>
 
@@ -145,7 +151,15 @@
                         </Grid>
 
                         <DataGrid x:Name="SetsGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" 
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="1" RowBackground="White" AlternatingRowBackground="#F9FAFB">
+                                HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="1" RowBackground="White" AlternatingRowBackground="#F9FAFB">
+
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Edit Set" Click="EditSet_Click"/>
+                                    <MenuItem Header="Delete Set" Foreground="#EF4444" Click="DeleteSet_Click"/>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Set" Binding="{Binding SetNumber}" Width="0.5*"/>
                                 <DataGridTextColumn Header="Weight" Binding="{Binding Weight}" Width="1*"/>
