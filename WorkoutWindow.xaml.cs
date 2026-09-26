@@ -21,21 +21,92 @@ namespace REPertoire
         private int currentRemainingSeconds = 90;
         private bool isTimerRunning = false;
 
-        public WorkoutWindow()
+        // Upgraded constructor accepts an optional SessionID
+        public WorkoutWindow(int? existingSessionId = null)
         {
             InitializeComponent();
-
-            StartTimeTextBox.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-            EndTimeTextBox.Text = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm");
-
-            CreateDatabaseSession();
-            LoadMasterExerciseList();
 
             restTimer = new DispatcherTimer();
             restTimer.Interval = TimeSpan.FromSeconds(1);
             restTimer.Tick += RestTimer_Tick;
-
             UpdateTimerDisplay();
+
+            LoadMasterExerciseList();
+
+            // EDIT MODE: Load existing data instead of creating a new session
+            if (existingSessionId.HasValue)
+            {
+                currentSessionId = existingSessionId.Value;
+                LoadExistingSessionData();
+            }
+            // NEW WORKOUT MODE: Create a brand new session
+            else
+            {
+                StartTimeTextBox.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+                EndTimeTextBox.Text = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm");
+                CreateDatabaseSession();
+            }
+        }
+
+        private void LoadExistingSessionData()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    string sessionQuery = "SELECT Name, StartTime, EndTime FROM Sessions WHERE SessionID = @SessionID";
+                    using (SqlCommand cmd = new SqlCommand(sessionQuery, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@SessionID", currentSessionId);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                WorkoutNameTextBox.Text = reader["Name"].ToString();
+                                StartTimeTextBox.Text = Convert.ToDateTime(reader["StartTime"]).ToString("yyyy-MM-dd HH:mm");
+                                if (reader["EndTime"] != DBNull.Value)
+                                {
+                                    EndTimeTextBox.Text = Convert.ToDateTime(reader["EndTime"]).ToString("yyyy-MM-dd HH:mm");
+                                }
+                            }
+                        }
+                    }
+
+                    string exercisesQuery = @"
+                        SELECT DISTINCT e.ExerciseID, e.Name 
+                        FROM Sets s 
+                        JOIN Exercises e ON s.ExerciseID = e.ExerciseID 
+                        WHERE s.SessionID = @SessionID";
+
+                    using (SqlCommand cmd = new SqlCommand(exercisesQuery, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@SessionID", currentSessionId);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int exId = Convert.ToInt32(reader["ExerciseID"]);
+                                string exName = reader["Name"].ToString();
+                                if (!sessionExercises.ContainsKey(exId))
+                                {
+                                    sessionExercises.Add(exId, exName);
+                                }
+                            }
+                        }
+                    }
+
+                    ActiveExercisesList.ItemsSource = null;
+                    ActiveExercisesList.ItemsSource = sessionExercises;
+                    ActiveExercisesList.DisplayMemberPath = "Value";
+                    ActiveExercisesList.SelectedValuePath = "Key";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading saved workout: " + ex.Message);
+            }
         }
 
         private void CreateDatabaseSession()

@@ -179,7 +179,18 @@ namespace REPertoire
 
         private void EditWorkout_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Edit functionality requires updates to the WorkoutWindow. We will tackle this in the next step!", "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+            MenuItem menuItem = sender as MenuItem;
+            if (menuItem != null)
+            {
+                HistoryItem selectedItem = menuItem.DataContext as HistoryItem;
+                if (selectedItem != null)
+                {
+                    WorkoutWindow workoutWindow = new WorkoutWindow(selectedItem.SessionID);
+                    workoutWindow.ShowDialog();
+
+                    LoadHistory();
+                }
+            }
         }
 
         private void DeleteWorkout_Click(object sender, RoutedEventArgs e)
