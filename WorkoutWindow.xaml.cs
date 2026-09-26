@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Threading;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
+using System.Windows.Media;
 
 namespace REPertoire
 {
@@ -11,20 +14,28 @@ namespace REPertoire
     {
         private string connectionString = "Server=localhost;Database=REPertoireDB;Integrated Security=True;TrustServerCertificate=True;";
         private int currentSessionId;
-
-        // Dictionary to hold exercises added to this specific session
         private Dictionary<int, string> sessionExercises = new Dictionary<int, string>();
+
+        private DispatcherTimer restTimer;
+        private int defaultRestSeconds = 90;
+        private int currentRemainingSeconds = 90;
+        private bool isTimerRunning = false;
 
         public WorkoutWindow()
         {
             InitializeComponent();
 
-            // Set default times to right now when the window opens
             StartTimeTextBox.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-            EndTimeTextBox.Text = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm"); // Guesses an end time 1 hour from now
+            EndTimeTextBox.Text = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm");
 
             CreateDatabaseSession();
             LoadMasterExerciseList();
+
+            restTimer = new DispatcherTimer();
+            restTimer.Interval = TimeSpan.FromSeconds(1);
+            restTimer.Tick += RestTimer_Tick;
+
+            UpdateTimerDisplay();
         }
 
         private void CreateDatabaseSession()
@@ -34,7 +45,6 @@ namespace REPertoire
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    // We immediately insert a temporary session so we can attach sets to it
                     string query = "INSERT INTO Sessions (Name, StartTime) VALUES (@Name, @StartTime); SELECT SCOPE_IDENTITY();";
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
@@ -65,7 +75,6 @@ namespace REPertoire
                 }
             }
 
-            // Refresh the dropdown and clear the quick-add box
             LoadMasterExerciseList();
             NewExerciseName.Clear();
         }
@@ -208,7 +217,6 @@ namespace REPertoire
         {
             try
             {
-                // Parse the user's custom times
                 DateTime startTime = DateTime.Parse(StartTimeTextBox.Text);
                 DateTime endTime = DateTime.Parse(EndTimeTextBox.Text);
                 string workoutName = WorkoutNameTextBox.Text.Trim();
@@ -216,7 +224,6 @@ namespace REPertoire
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    // Update the session with the final customized times and name
                     string query = "UPDATE Sessions SET Name = @Name, StartTime = @StartTime, EndTime = @EndTime WHERE SessionID = @SessionID";
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
@@ -229,7 +236,7 @@ namespace REPertoire
                 }
 
                 MessageBox.Show("Workout saved successfully!");
-                this.Close(); // Closes the popup, returning to the Main Menu
+                this.Close();
             }
             catch (FormatException)
             {
@@ -239,6 +246,100 @@ namespace REPertoire
             {
                 MessageBox.Show("Error saving workout: " + ex.Message);
             }
+        }
+
+        private void ToggleTimerMenu_Click(object sender, RoutedEventArgs e)
+        {
+            if (TimerMenuPanel.Visibility == Visibility.Visible)
+            {
+                TimerMenuPanel.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                TimerMenuPanel.Visibility = Visibility.Visible;
+                MinimizedTimerBar.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void MinimizeTimer_Click(object sender, RoutedEventArgs e)
+        {
+            TimerMenuPanel.Visibility = Visibility.Collapsed;
+            MinimizedTimerBar.Visibility = Visibility.Visible;
+        }
+
+        private void ExpandTimer_Click(object sender, MouseButtonEventArgs e)
+        {
+            MinimizedTimerBar.Visibility = Visibility.Collapsed;
+            TimerMenuPanel.Visibility = Visibility.Visible;
+        }
+
+        private void RestTimer_Tick(object sender, EventArgs e)
+        {
+            if (currentRemainingSeconds > 0)
+            {
+                currentRemainingSeconds--;
+                UpdateTimerDisplay();
+            }
+            else
+            {
+                StopAndResetTimer();
+                System.Media.SystemSounds.Exclamation.Play();
+            }
+        }
+
+        private void StartStopTimer_Click(object sender, RoutedEventArgs e)
+        {
+            if (isTimerRunning)
+            {
+                StopAndResetTimer();
+            }
+            else
+            {
+                restTimer.Start();
+                isTimerRunning = true;
+                StartStopTimerBtn.Content = "Stop / Reset";
+                StartStopTimerBtn.Background = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+            }
+        }
+
+        private void TimerMinus_Click(object sender, RoutedEventArgs e)
+        {
+            AdjustTime(-15);
+        }
+
+        private void TimerPlus_Click(object sender, RoutedEventArgs e)
+        {
+            AdjustTime(15);
+        }
+
+        private void AdjustTime(int seconds)
+        {
+            currentRemainingSeconds += seconds;
+            if (currentRemainingSeconds < 0) currentRemainingSeconds = 0;
+
+            if (!isTimerRunning)
+            {
+                defaultRestSeconds = currentRemainingSeconds;
+            }
+
+            UpdateTimerDisplay();
+        }
+
+        private void StopAndResetTimer()
+        {
+            restTimer.Stop();
+            isTimerRunning = false;
+            currentRemainingSeconds = defaultRestSeconds;
+            StartStopTimerBtn.Content = "Start";
+            StartStopTimerBtn.Background = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+            UpdateTimerDisplay();
+        }
+
+        private void UpdateTimerDisplay()
+        {
+            string timeFormatted = TimeSpan.FromSeconds(currentRemainingSeconds).ToString(@"mm\:ss");
+            TimerDisplay.Text = timeFormatted;
+            MinimizedTimerDisplay.Text = timeFormatted;
         }
     }
 }
