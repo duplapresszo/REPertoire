@@ -10,7 +10,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header and Start Button -->
         <Grid Grid.Row="0" Margin="0,0,0,20">
             <TextBlock Text="REPertoire Dashboard" FontSize="28" FontWeight="Bold" VerticalAlignment="Center"/>
             <Button x:Name="StartWorkoutBtn" Content="+ Start New Workout" Width="200" Height="45" 
@@ -24,27 +23,36 @@
             </Button>
         </Grid>
 
-        <!-- Dashboard Tabs -->
         <TabControl Grid.Row="1" Background="White" BorderBrush="#E5E7EB">
 
-            <!-- HISTORY TAB -->
             <TabItem Header="Workout History" FontSize="16">
                 <Grid Margin="15">
                     <ListBox x:Name="HistoryListBox" BorderThickness="0" HorizontalContentAlignment="Stretch">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <!-- Each item gets a bottom border and some breathing room -->
                                 <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="10">
-                                    <StackPanel>
-                                        <!-- Bold Title Line -->
-                                        <TextBlock Text="{Binding Title}" 
-                               FontSize="16" FontWeight="Bold" Foreground="#1F2937"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                        <!-- Lighter, wrapped Summary line -->
-                                        <TextBlock Text="{Binding Summary}" 
-                               FontSize="13" Foreground="#6B7280" 
-                               Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                    </StackPanel>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" Foreground="#1F2937"/>
+                                            <TextBlock Text="{Binding Summary}" FontSize="13" Foreground="#6B7280" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1" Content="⋮" FontSize="24" FontWeight="Bold" 
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="15,0"
+                                                Foreground="#9CA3AF" Click="WorkoutOptionsBtn_Click">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Edit" Click="EditWorkout_Click"/>
+                                                    <MenuItem Header="Delete" Foreground="#EF4444" Click="DeleteWorkout_Click"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -52,7 +60,6 @@
                 </Grid>
             </TabItem>
 
-            <!-- EXERCISE MANAGER TAB -->
             <TabItem Header="Manage Exercises" FontSize="16">
                 <Grid Margin="15">
                     <Grid.ColumnDefinitions>

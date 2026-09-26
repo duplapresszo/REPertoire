@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Data;
 using Microsoft.Data.SqlClient;
+using System.Collections.Generic;
 
 namespace REPertoire
 {
@@ -17,9 +18,9 @@ namespace REPertoire
             LoadExercises();
         }
 
-        // Helper class to bind data to the History ListBox
         public class HistoryItem
         {
+            public int SessionID { get; set; }
             public string Title { get; set; }
             public string Summary { get; set; }
         }
@@ -31,8 +32,6 @@ namespace REPertoire
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    // Using our new aggregated query
-                    // Update your query string inside the LoadHistory() method to this:
                     string query = @"
                         SELECT 
                             s.SessionID,
@@ -49,13 +48,13 @@ namespace REPertoire
                             GROUP BY st.SessionID, st.ExerciseID
                         ) set_counts ON s.SessionID = set_counts.SessionID
                         GROUP BY s.SessionID, s.Name, s.StartTime, s.EndTime
-                           ORDER BY s.StartTime DESC";
+                        ORDER BY s.StartTime DESC";
 
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            var historyItems = new System.Collections.Generic.List<HistoryItem>();
+                            var historyItems = new List<HistoryItem>();
                             while (reader.Read())
                             {
                                 string name = reader["Name"] != DBNull.Value ? reader["Name"].ToString() : "Untitled Workout";
@@ -65,11 +64,11 @@ namespace REPertoire
 
                                 historyItems.Add(new HistoryItem
                                 {
+                                    SessionID = Convert.ToInt32(reader["SessionID"]),
                                     Title = $"{name}  —  {date:dd MMM yyyy} ({duration} min)",
                                     Summary = summary
                                 });
                             }
-                            // Bind the list to the ListBox
                             HistoryListBox.ItemsSource = historyItems;
                         }
                     }
@@ -163,12 +162,67 @@ namespace REPertoire
 
         private void StartWorkoutBtn_Click(object sender, RoutedEventArgs e)
         {
-            // Open the new window as a popup dialog
             WorkoutWindow workoutWindow = new WorkoutWindow();
             workoutWindow.ShowDialog();
-
-            // When the workout window is closed, refresh the history list
             LoadHistory();
+        }
+
+        private void WorkoutOptionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            if (btn != null && btn.ContextMenu != null)
+            {
+                btn.ContextMenu.PlacementTarget = btn;
+                btn.ContextMenu.IsOpen = true;
+            }
+        }
+
+        private void EditWorkout_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Edit functionality requires updates to the WorkoutWindow. We will tackle this in the next step!", "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void DeleteWorkout_Click(object sender, RoutedEventArgs e)
+        {
+            MenuItem menuItem = sender as MenuItem;
+            if (menuItem != null)
+            {
+                HistoryItem selectedItem = menuItem.DataContext as HistoryItem;
+                if (selectedItem != null)
+                {
+                    var result = MessageBox.Show("Are you sure you want to permanently delete this workout and all its logged sets?", "Delete Workout", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            using (SqlConnection connection = new SqlConnection(connectionString))
+                            {
+                                connection.Open();
+
+                                string deleteSetsQuery = "DELETE FROM Sets WHERE SessionID = @SessionID";
+                                using (SqlCommand command = new SqlCommand(deleteSetsQuery, connection))
+                                {
+                                    command.Parameters.AddWithValue("@SessionID", selectedItem.SessionID);
+                                    command.ExecuteNonQuery();
+                                }
+
+                                string deleteSessionQuery = "DELETE FROM Sessions WHERE SessionID = @SessionID";
+                                using (SqlCommand command = new SqlCommand(deleteSessionQuery, connection))
+                                {
+                                    command.Parameters.AddWithValue("@SessionID", selectedItem.SessionID);
+                                    command.ExecuteNonQuery();
+                                }
+                            }
+                            LoadHistory();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Error deleting workout: " + ex.Message);
+                        }
+                    }
+                }
+            }
         }
     }
 }
