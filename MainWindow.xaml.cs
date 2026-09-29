@@ -9,7 +9,7 @@ namespace REPertoire
 {
     public partial class MainWindow : Window
     {
-        private string connectionString = "Server=localhost;Database=REPertoireDB;Integrated Security=True;TrustServerCertificate=True;";
+        private string connectionString = "Server=tcp:repertoire-db-2026.database.windows.net,1433;Initial Catalog=REPertoireDB;User ID=repertoireadmin;Password=Dq6Y4YT6crz6YZ7;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
 
         public MainWindow()
         {
@@ -74,9 +74,16 @@ namespace REPertoire
                     }
                 }
             }
+            catch (SqlException ex) when (ex.Number == 258 || ex.Message.Contains("timed out"))
+            {
+                MessageBox.Show("Connection Timeout: Your current network appears to be blocking secure database traffic on Port 1433.\n\nThe application will load, but live data will not be available. Please try a different network.",
+                                "Network Firewall Restriction",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+            }
             catch (Exception ex)
             {
-                MessageBox.Show("Error loading history: " + ex.Message);
+                MessageBox.Show("Error loading history: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

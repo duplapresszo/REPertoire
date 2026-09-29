@@ -12,7 +12,7 @@ namespace REPertoire
 {
     public partial class WorkoutWindow : Window
     {
-        private string connectionString = "Server=localhost;Database=REPertoireDB;Integrated Security=True;TrustServerCertificate=True;";
+        private string connectionString = "Server=tcp:repertoire-db-2026.database.windows.net,1433;Initial Catalog=REPertoireDB;User ID=repertoireadmin;Password=Dq6Y4YT6crz6YZ7;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
         private int currentSessionId;
         private Dictionary<int, string> sessionExercises = new Dictionary<int, string>();
 
